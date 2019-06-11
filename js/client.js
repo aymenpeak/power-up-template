@@ -258,36 +258,39 @@ TrelloPowerUp.initialize({
   // The Promise should resolve to the object type that is expected to be returned
   'attachment-sections': function(t, options){
     // options.entries is a list of the attachments for this card
-    // you can look through them and 'claim' any that you want to
-    // include in your section.
+        // you can look through them and 'claim' any that you want to
+        // include in your section.
 
-    // we will just claim urls for Yellowstone
-    var claimed = options.entries.filter(function(attachment){
-      return attachment.url.indexOf('http://www.nps.gov/yell/') === 0;
-    });
+        // we will just claim urls for YouTube
+        var claimed = options.entries.filter(function (attachment) {
+          // claim youtube urls
+          return attachment.url.indexOf('https://www.youtube.com') === 0;
+      });
 
-    // you can have more than one attachment section on a card
-    // you can group items together into one section, have a section
-    // per attachment, or anything in between.
-    if(claimed && claimed.length > 0){
-      // if the title for your section requires a network call or other
-      // potentially length operation you can provide a function for the title
-      // that returns the section title. If you do so, provide a unique id for
-      // your section
-      return [{
-        id: 'Yellowstone', // optional if you aren't using a function for the title
-        claimed: claimed,
-        icon: GLITCH_ICON,
-        title: 'Example Attachment Section: Yellowstone',
-        content: {
-          type: 'iframe',
-          url: t.signUrl('./section.html', { arg: 'you can pass your section args here' }),
-          height: 230
-        }
-      }];
-    } else {
-      return [];
-    }
+      // you can have more than one attachment section on a card
+      // you can group items together into one section, have a section
+      // per attachment, or anything in between.
+      if (claimed && claimed.length > 0) {
+          // if the title for your section requires a network call or other
+          // potentially length operation you can provide a function for the title
+          // that returns the section title. If you do so, provide a unique id for
+          // your section
+          return [{
+              id: 'YouTube', // optional if you aren't using a function for the title
+              claimed: claimed,
+              icon: YOUTUBE_ICON,
+              title: 'YouTube Videos',
+              content: {
+                  type: 'iframe',
+                  url: t.signUrl('./section.html', {
+                      arg: 'you can pass your section args here'
+                  }),
+                  height: 230
+              }
+          }];
+      } else {
+          return [];
+      }
   },
   'attachment-thumbnail': function(t, options){
     // options.url has the url of the attachment for us
@@ -331,18 +334,71 @@ TrelloPowerUp.initialize({
     return getBadges(t);
   },
   'card-buttons': function(t, options) {
+    var GRAY_ICON = './images/yt_icon_gray.png';
+    var youTubeButtonCallback = function (t) {
+
+      return t.popup({
+          title: 'YouTube',
+          items: function (t, options) {
+  
+              // use options.search which is the search text entered so far
+              // return a Promise that resolves to an array of items
+              // similar to the items you provided in the client side version above
+              var response = $.ajax({
+                  url: "https://www.googleapis.com/youtube/v3/search",
+                  data: {
+                      maxResults: '25',
+                      q: options.search,
+                      type: 'video',
+                      part: 'snippet',
+                      key: 'AIzaSyCawso6-SQJS2JAw7FCXQD-sNeLtzDPxE0'
+                  },
+                  success: function (data) {
+                      //                console.log(data);
+                  },
+                  error: function (jqXHR, textStatus, errorThrown) {
+                      alert(errorThrown);
+                  }
+              });
+  
+              // when the response is finished, then return a list of items
+              return response.then(function (data) {
+                  //                console.log(data);
+                  var ret = new Array();
+                  var items = data.items;
+                  for (var i = 0; i < items.length; i++) {
+                      ret.push({
+                          text: items[i].snippet.title,
+                          callback: (function (item) {
+                              return function (t, opts) {
+                                  return t.attach({
+                                      name: item.snippet.title, // optional
+                                      url: "https://www.youtube.com/embed/" + item.id.videoId // required
+                                  });
+                              }
+                          })(items[i])
+                      });
+                  }
+                  return ret;
+              });
+          },
+          search: {
+              // optional # of ms to debounce search to
+              // defaults to 300, override must be larger than 300
+              debounce: 300,
+              placeholder: 'Search',
+              empty: 'No results',
+              searching: 'Searching'
+          }
+      });
+  
+  };
     return [{
       // usually you will provide a callback function to be run on button click
       // we recommend that you use a popup on click generally
       icon: GRAY_ICON, // don't use a colored icon here
-      text: 'Open Popup',
-      callback: cardButtonCallback
-    }, {
-      // but of course, you could also just kick off to a url if that's your thing
-      icon: GRAY_ICON,
-      text: 'Just a URL',
-      url: 'https://developers.trello.com',
-      target: 'Trello Developer Site' // optional target for above url
+      text: 'Youtube',
+      callback: youTubeButtonCallback
     }];
   },
   'card-detail-badges': function(t, options) {
